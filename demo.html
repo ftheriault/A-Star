@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>A* demo</title>
+		<script src="js/a-star.js"></script>
+	</head>
+	<body>
+		<script>
+			class Map {
+				constructor(width, height) {
+					this.minNodeDistance = 1;
+
+					this.maze = new Array();
+
+					for (var i = 0; i < width; i++) {
+						this.maze[i] = new Array();
+
+						for (var j = 0; j < height; j++) {
+							this.maze[i].push(0);
+						}
+					}
+
+					// Add border walls
+					for (var i = 0; i < width; i++) {
+						this.maze[i][0] = 1;
+						this.maze[i][height - 1] = 1;
+					}
+
+					for (var j = 0; j < height; j++) {
+						this.maze[0][j] = 1;
+						this.maze[width - 1][j] = 1;
+					}
+
+					// Add obstacle 1
+					for (var i = 1; i < width/3 * 2; i++) {
+						this.maze[i][height/4] = "1";
+					}
+
+					// Add obstacle 2
+					for (var i = width/4; i < width; i++) {
+						this.maze[parseInt(i)][height/2] = "1";
+					}
+
+
+					// Add obstacle 3
+					for (var i = 1; i < height/3; i++) {
+						this.maze[width/2][height - i] = "1";
+					}
+
+					// end
+					this.endPoint = { x : width - 2, y : height - 2};
+				}
+
+				// This is the important method
+				// Cost to walk on the tile
+				// -1 is it is a tile that cannot be walked over
+				getWalkableCost(x, y) {
+					return this.maze[x][y] != 1 ? 10 : -1;
+				}
+
+				drawCell(x, y, color) {
+					gameCtx.fillStyle = color;  
+					gameCtx.fillRect(x * this.getCellWidth(), y * this.getCellHeight(), this.getCellWidth(), this.getCellHeight());  
+				}
+
+				getCellWidth() {
+					return canvas.width/this.maze.length
+				}
+
+				getCellHeight() {
+					return canvas.height/this.maze[0].length
+				}
+
+				setEndPoint(evt, elem) {
+					var x = evt.pageX;
+					var y = evt.pageY;
+
+					this.endPoint.x = parseInt((x - this.getCellWidth()/2)/this.getCellWidth());
+					this.endPoint.y = parseInt((y - this.getCellHeight()/2)/this.getCellHeight());
+				}
+			}	
+
+		</script>
+
+		<canvas onclick="changeEndPoint(event, this)" id="canvas" width="800" height="800"></canvas>
+		
+		<script>
+			var width = 80;
+			var height = 80;
+			var canvas = document.getElementById("canvas");
+			var gameCtx = canvas.getContext("2d");
+			var map = new Map(width, height);
+
+			var path = new Array();
+			var loc = {x : 1, y : 1}
+
+			function changeEndPoint(evt, elem) {
+				path = new Array();
+				map.setEndPoint(event,this)
+			}
+
+			function tick() {
+				gameCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+				if (loc.x != map.endPoint.x || loc.y != map.endPoint.y) {
+					if (path.length == 0) {
+						path = calculatePath(loc.x, 
+									  		 loc.y, 
+									  		 map.endPoint.x, 
+									  		 map.endPoint.y, 
+									  		 map, 
+									  		 1, 
+									  		 false, 
+									  		 false);
+					}
+					else {
+						var dir = path.shift();
+
+						loc.x = dir.x;
+						loc.y = dir.y;
+					}
+				}
+
+				for (var i = 0; i < map.maze.length; i++) {
+					for (var j = 0; j < map.maze[i].length; j++) {
+						var type = map.maze[i][j];
+
+						if (type == "1") {
+							map.drawCell(i, j, "blue");
+						}
+					}
+				}
+
+				map.drawCell(map.endPoint.x, map.endPoint.y, "red");
+				map.drawCell(loc.x, loc.y, "green");
+
+				window.requestAnimationFrame(tick);
+			}
+
+			tick();
+		</script>
+	</body>
+</html>
