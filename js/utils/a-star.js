@@ -8,35 +8,37 @@
  *
  * currentX/Y : current position of sprite
  * destinationYX : destination point
- * map : must have the function getWalkableCost(x, y), which must return -1 if a wall, or the cost of passing through that path 
- *		 (10 should be default, 15 could be high ground and 20 could be a sand pit, for example) 
+ * map : must have the function getWalkableCost(x, y), which must return -1 if a wall, or the cost of passing through that path
+ *		 (10 should be default, 15 could be high ground and 20 could be a sand pit, for example)
  * minObstacleSize : in order to jump to next node, how many pixels can we jump over? 1 is ideal, but requires a lot more processing/memory
- * isRoundDiagonalEdge : is it possible for the sprite to pass near a wall in diagonal? (if true, less cpu intensive, but more error prone). 
+ * isRoundDiagonalEdge : is it possible for the sprite to pass near a wall in diagonal? (if true, less cpu intensive, but more error prone).
  *						 If set to false, a collision detection logic could fail if a sprite attempts to pass through a wall diagonally
- * 
+ *
  * returns the path of points to follow
- */ 
-function calculatePath (currentX, currentY, destinationX, destinationY, map, minObstacleSize, isSupportDiagonal, isRoundDiagonalEdge) {	
-	var Node = function (x, y, cost, parent) {
+ */
+const calculatePath = (currentX, currentY, destinationX, destinationY, map, minObstacleSize, isSupportDiagonal, isRoundDiagonalEdge) => {
+	let Node = function (x, y, cost, parent) {
 		this.x = x;
 		this.y = y;
-		this.parent = parent; 
-		
+		this.parent = parent;
+
 		this.cost = cost;	// g
-		this.h = (Math.abs(this.x - destinationX) + Math.abs(this.y - destinationY)) * 10;	// Heuristic (Manhattan method) cost to reach dest.
+		this.h = (Math.abs(this.x - destinationX) + Math.abs(this.y - destinationY)) * 1;	// Heuristic (Manhattan method) cost to reach dest.
 
 		this.score = this.cost + (this.parent != null ? this.parent.score : 0 ) + this.h;
 	}
 
-	var path = [];
-	var openList = [];
-	var closedList = [];
-	var resultNode = null;
-	var currentNode;
-	var x, y;
-	var cost = 0;
-	var inListNode = null;
-	var node = null;
+	let path = [];
+	let openList = [];
+	let closedList = [];
+	let resultNode = null;
+	let currentNode;
+	let x, y;
+	let cost = 0;
+	let inListNode = null;
+	let node = null;
+	let currentNodeIdx = null;
+	let diagAccepted = false;
 
 	openList.push(new Node(currentX, currentY, 0, null));
 
@@ -44,8 +46,8 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 	while (openList.length > 0) {
 		currentNodeIdx = 0;
 		currentNode = openList[currentNodeIdx];
-		
-		for (var j = 0; j < openList.length; j++) {
+
+		for (let j = 0; j < openList.length; j++) {
 			if (currentNode.score > openList[j].score) {
 				currentNode = openList[j];
 				currentNodeIdx = j;
@@ -56,7 +58,7 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 		closedList[currentNode.x + "-" + currentNode.y] = 1;
 
 		// for all adjacent node
-		for (var i = 0; i < (isSupportDiagonal ? 8 : 4); i++) {
+		for (let i = 0; i < (isSupportDiagonal ? 8 : 4); i++) {
 			diagAccepted = true;
 
 			if (i == 0) {x = 0; y = -1 * minObstacleSize}
@@ -74,17 +76,18 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 					(i == 6 && (map.getWalkableCost(currentNode.x - 1 * minObstacleSize, currentNode.y) == -1 || (map.getWalkableCost(currentNode.x, currentNode.y + 1 * minObstacleSize) == -1))) ||
 					(i == 7 && (map.getWalkableCost(currentNode.x + 1 * minObstacleSize, currentNode.y) == -1 || (map.getWalkableCost(currentNode.x, currentNode.y + 1 * minObstacleSize) == -1)))) {
 					diagAccepted = false;
-				} 
+				}
 			}
 
-			// if the node isn't an objstacle or part of closed list
+			// if the node isn't an obstacle or part of closed list
 			cost = map.getWalkableCost(currentNode.x + x, currentNode.y + y);
+
 			if (cost != -1 && diagAccepted &&
 				closedList[(currentNode.x + x) + "-" + (currentNode.y + y)] == null) {
-				node = new Node(currentNode.x + x, currentNode.y + y, cost + (i > 3 ? 4 : 0), currentNode);	
+				node = new Node(currentNode.x + x, currentNode.y + y, Math.round(cost * (i > 3 ? 1.7 : 1)), currentNode);
 				inListNode = null;
 
-				for (var j = 0; j < openList.length; j++) {
+				for (let j = 0; j < openList.length; j++) {
 					if (openList[j].x == node.x && openList[j].y == node.y) {
 						inListNode = openList[j];
 						break;
@@ -101,12 +104,12 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 				}
 
 				// check if node is target node. If so, done!
-				if (Math.abs(node.x - destinationX) <  minObstacleSize && 
+				if (Math.abs(node.x - destinationX) <  minObstacleSize &&
 					Math.abs(node.y - destinationY) <  minObstacleSize) {
 					resultNode = node;
 					break;
 				}
-			}	
+			}
 		}
 
 		if (resultNode != null) {
@@ -114,9 +117,8 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 		}
 	}
 
-	// If the resultNod exists, backtrack and create a path
+	// If the resultNode exists, backtrack and create a path
 	if (resultNode != null) {
-		var direction;
 		path.unshift(resultNode);
 
 		while (resultNode.parent != null) {
@@ -127,3 +129,5 @@ function calculatePath (currentX, currentY, destinationX, destinationY, map, min
 
 	return path;
 }
+
+export default calculatePath;
